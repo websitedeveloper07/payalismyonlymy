@@ -11,7 +11,7 @@ import pyfiglet
 import os
 import webbrowser
 from colorama import Fore
-from getuseragent import UserAgent
+from fake_useragent import UserAgent
 import chardet
 Z =  '\033[1;31m' 
 F = '\033[2;32m' 
