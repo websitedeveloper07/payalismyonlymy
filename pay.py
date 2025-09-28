@@ -131,6 +131,10 @@ def check_card(card_details):
 # --- API Endpoint ---
 @app.route('/gateway=<gateway>&key=<key>', methods=['GET'])
 def api_check(gateway, key):
+    # Key validation
+    if key != "rockyalways":
+        return jsonify({"message": "ACCESS DENIED ❌", "response_text": "ERROR: INVALID_KEY"}), 403
+
     card_info = request.args.get('cc')
     if not card_info:
         return jsonify({"message": "DECLINED ❌", "response_text": "ERROR: MISSING_PARAM"}), 400
