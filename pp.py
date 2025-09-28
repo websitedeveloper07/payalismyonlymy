@@ -22,7 +22,7 @@ W=Fore.WHITE
 L=Fore.BLUE
 print(Z+"□■"*30)
 
-ascii_art = pyfiglet.figlet_format("   TEAM 7OUDA ")
+ascii_art = pyfiglet.figlet_format("   𝑪𝑨𝑹𝑫 ✘ 𝑪𝑯𝑲 ")
 print(L+ ascii_art)
 print('\t\x1b[38;5;153m Checker PayPal Charge 1$');
 print(F+"□■"*30)
