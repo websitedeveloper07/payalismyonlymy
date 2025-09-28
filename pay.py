@@ -126,13 +126,23 @@ def check_card(card_details):
             error_text = "ERROR: UNKNOWN"
 
         # --- Decide clean message ---
-        if any(x in response_final.text for x in ["succeeded", "Thank You", "ADD_SHIPPING_ERROR", "is3DSecureRequired", "INVALID_SECURITY_CODE", "EXISTING_ACCOUNT_RESTRICTED", "INVALID_BILLING_ADDRESS"]):
+        # --- Decide clean message ---
+        if "is3DSecureRequired" in response_final.text:
+            return {"message": "✅APPROVED", "response_text": "3ds_Required"}
+
+        elif any(x in response_final.text for x in [
+            "succeeded", "Thank You", "ADD_SHIPPING_ERROR",
+            "INVALID_SECURITY_CODE", "EXISTING_ACCOUNT_RESTRICTED",
+            "INVALID_BILLING_ADDRESS"
+        ]):
             return {"message": "✅APPROVED", "response_text": error_text}
+
         else:
             return {"message": "❌DECLINED", "response_text": error_text}
 
     except Exception as e:
         return {"message": "❌DECLINED", "response_text": f"ERROR: {str(e)}"}
+
 
 # --- API Endpoint ---
 @app.route('/api', methods=['GET'])
