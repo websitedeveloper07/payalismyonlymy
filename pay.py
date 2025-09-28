@@ -3,6 +3,7 @@ import requests
 import re
 import random
 import string
+import json
 from flask import Flask, request, jsonify
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 import user_agent
@@ -104,22 +105,35 @@ def check_card(card_details):
             json=json_data_graphql
         )
 
-        # Raw JSON string from PayPal
-        last = response_final.text.strip()
+        # Try to parse JSON and extract clean error text
+        try:
+            raw_json = response_final.json()
+            error_texts = []
+            if "errors" in raw_json:
+                for err in raw_json["errors"]:
+                    code = ""
+                    if "data" in err and isinstance(err["data"], list) and len(err["data"]) > 0:
+                        code = err["data"][0].get("code", "")
+                    message = err.get("message", "")
+                    if code or message:
+                        error_texts.append(f"ERROR: {code} | MESSAGE: {message}")
+            last_clean = " | ".join(error_texts) if error_texts else response_final.text.strip()
+        except Exception:
+            last_clean = response_final.text.strip()
 
         # --- Decide status & message ---
-        if ('ADD_SHIPPING_ERROR' in last or '"status": "succeeded"' in last or 'Thank You For Donation.' in last):
-            return {"status": "Approved", "message": "CHARGE ✅", "response_text": last}
-        elif 'is3DSecureRequired' in last:
-            return {"status": "Approved (3D Secure)", "message": "OTP 💥 [3D]", "response_text": last}
-        elif 'INVALID_SECURITY_CODE' in last:
-            return {"status": "Approved (CCN)", "message": "APPROVED CCN ✅", "response_text": last}
-        elif 'EXISTING_ACCOUNT_RESTRICTED' in last:
-            return {"status": "Approved", "message": "APPROVED! ✅ - [EXISTING_ACCOUNT_RESTRICTED]", "response_text": last}
-        elif 'INVALID_BILLING_ADDRESS' in last:
-            return {"status": "Approved", "message": "APPROVED! ✅ - [inv_address]", "response_text": last}
+        if ('ADD_SHIPPING_ERROR' in last_clean or '"status": "succeeded"' in last_clean or 'Thank You For Donation.' in last_clean):
+            return {"status": "Approved", "message": "CHARGE ✅", "response_text": last_clean}
+        elif 'is3DSecureRequired' in last_clean:
+            return {"status": "Approved (3D Secure)", "message": "OTP 💥 [3D]", "response_text": last_clean}
+        elif 'INVALID_SECURITY_CODE' in last_clean:
+            return {"status": "Approved (CCN)", "message": "APPROVED CCN ✅", "response_text": last_clean}
+        elif 'EXISTING_ACCOUNT_RESTRICTED' in last_clean:
+            return {"status": "Approved", "message": "APPROVED! ✅ - [EXISTING_ACCOUNT_RESTRICTED]", "response_text": last_clean}
+        elif 'INVALID_BILLING_ADDRESS' in last_clean:
+            return {"status": "Approved", "message": "APPROVED! ✅ - [inv_address]", "response_text": last_clean}
         else:
-            return {"status": "Declined", "message": "DECLINED ❌", "response_text": last}
+            return {"status": "Declined", "message": "DECLINED ❌", "response_text": last_clean}
 
     except Exception as e:
         return {"status": "Error", "message": str(e), "response_text": ""}
