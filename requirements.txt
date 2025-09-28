@@ -8,3 +8,4 @@ Flask
 requests
 requests-toolbelt
 user-agent
+gunicorn
